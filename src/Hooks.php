@@ -8,7 +8,7 @@ use MediaWiki\Page\RedirectLookup;
 use MediaWiki\Title\Title;
 
 class Hooks implements ParserPreSaveTransformCompleteHook {
-	private const CATEGORY_REGEX = '/\[\[ *[Cc]ategory: *(.+?)(?: *| *\| *(.+?))]]/m';
+	private const CATEGORY_REGEX = '/\[\[ *([Cc]ategory: *.+?)(?: *| *\| *(.+?))]]/m';
 
 	private PageLookup $pageLookup;
 	private RedirectLookup $redirectLookup;
@@ -32,10 +32,10 @@ class Hooks implements ParserPreSaveTransformCompleteHook {
 			return;
 		}
 		foreach ( $matches as $match ) {
-			// $match[0] is the link itself: [[Category:A category]]
-			// $match[1] is the category name: A category
+			// $match[0] is the category link: [[Category:A category]]
+			// $match[1] is the category title text: Category:A category
 
-			$categoryPage = $this->pageLookup->getPageByText( $match[1], defaultNamespace: NS_CATEGORY );
+			$categoryPage = $this->pageLookup->getPageByText( $match[1] );
 			if ( $categoryPage === null ) {
 				continue;
 			}
