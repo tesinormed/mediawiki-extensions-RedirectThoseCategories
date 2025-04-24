@@ -1,0 +1,45 @@
+{
+	"name": "RedirectThoseCategories",
+	"version": "0.1.0",
+	"author": [
+		"tesinormed"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:RedirectThoseCategories",
+	"descriptionmsg": "redirectthosecategories-desc",
+	"license-name": "CC0-1.0",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.43.0",
+		"extensions": {
+		},
+		"platform": {
+			"php": ">= 8.1"
+		}
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\RedirectThoseCategories\\": "src/"
+	},
+	"config": {
+	},
+	"ConfigRegistry": {
+		"redirectthosecategories": "GlobalVarConfig::newInstance"
+	},
+	"HookHandlers": {
+		"main": {
+			"class": "MediaWiki\\Extension\\RedirectThoseCategories\\Hooks",
+			"services": [
+				"PageStore",
+				"RedirectLookup"
+			]
+		}
+	},
+	"Hooks": {
+		"ParserPreSaveTransformComplete": "main"
+	},
+	"MessagesDirs": {
+		"RedirectThoseCategories": [
+			"i18n"
+		]
+	},
+	"manifest_version": 2
+}
