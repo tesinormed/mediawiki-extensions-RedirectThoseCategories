@@ -1,6 +1,6 @@
 {
 	"name": "RedirectThoseCategories",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"author": [
 		"tesinormed"
 	],
@@ -10,8 +10,6 @@
 	"type": "other",
 	"requires": {
 		"MediaWiki": ">= 1.43.0",
-		"extensions": {
-		},
 		"platform": {
 			"php": ">= 8.1"
 		}
@@ -19,22 +17,23 @@
 	"AutoloadNamespaces": {
 		"MediaWiki\\Extension\\RedirectThoseCategories\\": "src/"
 	},
-	"config": {
-	},
-	"ConfigRegistry": {
-		"redirectthosecategories": "GlobalVarConfig::newInstance"
-	},
 	"HookHandlers": {
 		"main": {
 			"class": "MediaWiki\\Extension\\RedirectThoseCategories\\Hooks",
 			"services": [
+				"JobQueueGroupFactory",
 				"PageStore",
-				"RedirectLookup"
+				"RedirectLookup",
+				"RestrictionStore"
 			]
 		}
 	},
 	"Hooks": {
-		"ParserPreSaveTransformComplete": "main"
+		"ParserPreSaveTransformComplete": "main",
+		"PageSaveComplete": "main"
+	},
+	"JobClasses": {
+		"recategorizePages": "MediaWiki\\Extension\\RedirectThoseCategories\\RecategorizePagesJob"
 	},
 	"MessagesDirs": {
 		"RedirectThoseCategories": [

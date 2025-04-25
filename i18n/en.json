@@ -4,5 +4,7 @@
 			"tesinormed"
 		]
 	},
-	"redirectthosecategories-desc": "Implement automatic replacement of redirected categories"
+	"redirectthosecategories-desc": "Implement automatic replacement of redirected categories",
+	"redirectthosecategories-user": "RedirectThoseCategories",
+	"redirectthosecategories-edit-summary": "automated category replacement due to redirect"
 }
