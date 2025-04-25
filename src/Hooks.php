@@ -5,7 +5,6 @@ namespace MediaWiki\Extension\RedirectThoseCategories;
 use MediaWiki\Hook\ParserPreSaveTransformCompleteHook;
 use MediaWiki\Page\PageLookup;
 use MediaWiki\Page\RedirectLookup;
-use MediaWiki\Title\Title;
 
 class Hooks implements ParserPreSaveTransformCompleteHook {
 	private const CATEGORY_REGEX = '/\[\[ *([Cc]ategory: *.+?)(?: *| *\| *(.+?))]]/m';
@@ -23,10 +22,6 @@ class Hooks implements ParserPreSaveTransformCompleteHook {
 	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/ParserPreSaveTransformCompleteHook
 	 */
 	public function onParserPreSaveTransformComplete( $parser, &$text ): void {
-		if ( !Title::newFromPageReference( $parser->getPage() )->isContentPage() ) {
-			return;
-		}
-
 		$matchCount = preg_match_all( self::CATEGORY_REGEX, $text, $matches, PREG_SET_ORDER );
 		if ( $matchCount === false || $matchCount === 0 ) {
 			return;
