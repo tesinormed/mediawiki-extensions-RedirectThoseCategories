@@ -4,7 +4,6 @@ namespace MediaWiki\Extension\RedirectThoseCategories;
 
 use JobQueueGroup;
 use MediaWiki\Hook\ParserPreSaveTransformCompleteHook;
-use MediaWiki\JobQueue\JobQueueGroupFactory;
 use MediaWiki\Language\Language;
 use MediaWiki\Page\PageLookup;
 use MediaWiki\Page\RedirectLookup;
@@ -18,12 +17,12 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 	private RestrictionStore $restrictionStore;
 
 	public function __construct(
-		JobQueueGroupFactory $jobQueueGroupFactory,
+		JobQueueGroup $jobQueueGroup,
 		PageLookup $pageLookup,
 		RedirectLookup $redirectLookup,
 		RestrictionStore $restrictionStore,
 	) {
-		$this->jobQueueGroup = $jobQueueGroupFactory->makeJobQueueGroup();
+		$this->jobQueueGroup = $jobQueueGroup;
 		$this->pageLookup = $pageLookup;
 		$this->redirectLookup = $redirectLookup;
 		$this->restrictionStore = $restrictionStore;
@@ -39,7 +38,7 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 		$matchCount = preg_match_all(
 			'/\[\[ *('
 			. self::makeRegexCaseInsensitiveFirst( $language->getNsText( NS_CATEGORY ), $language )
-			. ': *.+?)(?: *| *\| *(.+?))]]/m',
+			. ': *.+?)(?: *| *\| *(.*?) *)]]/m',
 			$text,
 			$matches,
 			PREG_SET_ORDER
@@ -54,7 +53,7 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 
 			$categoryPage = $this->pageLookup->getPageByText( $match[1] );
 			// category page must be valid and must be protected
-			if ( $categoryPage === null || !$this->restrictionStore->isProtected( $categoryPage ) ) {
+			if ( $categoryPage === null || !$this->restrictionStore->isProtected( $categoryPage, 'edit' ) ) {
 				continue;
 			}
 
@@ -75,7 +74,7 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 	 */
 	public function onPageSaveComplete( $wikiPage, $user, $summary, $flags, $revisionRecord, $editResult ): void {
 		// page must be a category and must be protected
-		if ( $wikiPage->getNamespace() !== NS_CATEGORY || !$this->restrictionStore->isProtected( $wikiPage ) ) {
+		if ( $wikiPage->getNamespace() !== NS_CATEGORY || !$this->restrictionStore->isProtected( $wikiPage, 'edit' ) ) {
 			return;
 		}
 
@@ -86,7 +85,7 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 		}
 
 		// push to job queue (expensive operation)
-		$this->jobQueueGroup->lazyPush( new RecategorizePagesJob( $wikiPage->getTitle() ) );
+		$this->jobQueueGroup->lazyPush( new RecategorizePagesJob( [ 'categoryDBkey' => $wikiPage->getDBkey() ] ) );
 	}
 
 	private static function makeRegexCaseInsensitiveFirst( string $text, Language $language ): string {

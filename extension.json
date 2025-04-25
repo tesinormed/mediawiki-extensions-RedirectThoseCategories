@@ -1,6 +1,6 @@
 {
 	"name": "RedirectThoseCategories",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"author": [
 		"tesinormed"
 	],
@@ -21,9 +21,9 @@
 		"main": {
 			"class": "MediaWiki\\Extension\\RedirectThoseCategories\\Hooks",
 			"services": [
-				"JobQueueGroupFactory",
+				"JobQueueGroup",
 				"PageStore",
-				"RedirectLookup",
+				"RedirectStore",
 				"RestrictionStore"
 			]
 		}

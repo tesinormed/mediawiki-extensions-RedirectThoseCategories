@@ -3,6 +3,7 @@
 namespace MediaWiki\Extension\RedirectThoseCategories;
 
 use Exception;
+use GenericParameterJob;
 use Job;
 use MediaWiki\CommentStore\CommentStoreComment;
 use MediaWiki\Content\ContentHandler;
@@ -10,20 +11,21 @@ use MediaWiki\Content\TextContent;
 use MediaWiki\Language\Language;
 use MediaWiki\MediaWikiServices;
 use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Title\Title;
 use MediaWiki\User\User;
 
-class RecategorizePagesJob extends Job {
-	public const COMMAND = 'recategorizePages';
-
+class RecategorizePagesJob extends Job implements GenericParameterJob {
 	/** @inheritDoc */
-	public function __construct( $params ) {
-		parent::__construct( self::COMMAND, $params );
+	public function __construct( array $params ) {
+		parent::__construct( 'recategorizePages', $params );
 		$this->removeDuplicates = true;
+		$this->title = Title::newFromDBkey( $this->params['categoryDBkey'] );
 	}
 
 	public function run(): bool {
-		$dbProvider = MediaWikiServices::getInstance()->getConnectionProvider();
-		$wikiPageFactory = MediaWikiServices::getInstance()->getWikiPageFactory();
+		$services = MediaWikiServices::getInstance();
+		$dbProvider = $services->getConnectionProvider();
+		$wikiPageFactory = $services->getWikiPageFactory();
 
 		// regex to match [[Category:A category]] (with non-English language support)
 		$language = $this->title->getPageLanguage();
