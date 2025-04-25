@@ -5,6 +5,7 @@ namespace MediaWiki\Extension\RedirectThoseCategories;
 use JobQueueGroup;
 use MediaWiki\Hook\ParserPreSaveTransformCompleteHook;
 use MediaWiki\Language\Language;
+use MediaWiki\Linker\LinkTarget;
 use MediaWiki\Page\PageLookup;
 use MediaWiki\Page\RedirectLookup;
 use MediaWiki\Permissions\RestrictionStore;
@@ -62,9 +63,18 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 			if ( $categoryPageRedirectTarget === null || $categoryPageRedirectTarget->getNamespace() !== NS_CATEGORY ) {
 				continue;
 			}
+			if ( $this->getRedirectTargetForLink( $categoryPageRedirectTarget ) !== null ) {
+				wfLogWarning( __METHOD__ . ": category {$categoryPage->getDBkey()} is a double redirect" );
+				continue;
+			}
 
 			// replace original link with redirected link
-			$text = str_replace( $match[0], '[[Category:' . $categoryPageRedirectTarget->getText() . ']]', $text );
+			$replacementText = '[[Category:' . $categoryPageRedirectTarget->getText();
+			if ( isset( $match[2] ) && trim( $match[2] ) !== '' ) {
+				$replacementText .= '|' . $match[2];
+			}
+			$replacementText .= ']]';
+			$text = str_replace( $match[0], $replacementText, $text );
 		}
 	}
 
@@ -83,9 +93,17 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 		if ( $redirectTarget === null || $redirectTarget->getNamespace() !== NS_CATEGORY ) {
 			return;
 		}
+		if ( $this->getRedirectTargetForLink( $redirectTarget ) !== null ) {
+			wfLogWarning( __METHOD__ . ": category {$wikiPage->getDBkey()} is a double redirect" );
+			return;
+		}
 
 		// push to job queue (expensive operation)
 		$this->jobQueueGroup->lazyPush( new RecategorizePagesJob( [ 'categoryDBkey' => $wikiPage->getDBkey() ] ) );
+	}
+
+	private function getRedirectTargetForLink( LinkTarget $linkTarget ): ?LinkTarget {
+		return $this->redirectLookup->getRedirectTarget( $this->pageLookup->getPageForLink( $linkTarget ) );
 	}
 
 	private static function makeRegexCaseInsensitiveFirst( string $text, Language $language ): string {

@@ -29,11 +29,11 @@ class RecategorizePagesJob extends Job implements GenericParameterJob {
 
 		// regex to match [[Category:A category]] (with non-English language support)
 		$language = $this->title->getPageLanguage();
-		$categoryRegex = '/\[\[ *('
+		$categoryRegex = '/\[\[ *'
 			. self::makeRegexCaseInsensitiveFirst( $language->getNsText( NS_CATEGORY ), $language )
 			. ': *'
 			. str_replace( '_', '[_ ]', self::makeRegexCaseInsensitiveFirst( $this->title->getDBkey(), $language ) )
-			. ')(?: *| *\| *(.+?))]]/m';
+			. '(?: *| *(\|) *(.*?) *)]]/m';
 
 		// get all categorized pages
 		$dbr = $dbProvider->getReplicaDatabase();
@@ -54,7 +54,7 @@ class RecategorizePagesJob extends Job implements GenericParameterJob {
 			// replace old link with redirected link
 			$newContent = preg_replace(
 				$categoryRegex,
-				'[[Category:' . $this->title->getText() . ']]',
+				'[[Category:' . $this->title->getText() . '$1$2]]',
 				$categorizedWikiPageContent->getText()
 			);
 
