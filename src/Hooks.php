@@ -99,7 +99,7 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 		}
 
 		// push to job queue (expensive operation)
-		$this->jobQueueGroup->lazyPush( new RecategorizePagesJob( [ 'categoryDBkey' => $wikiPage->getDBkey() ] ) );
+		$this->jobQueueGroup->lazyPush( new RecategorizePagesJob( [ 'categoryId' => $wikiPage->getId() ] ) );
 	}
 
 	private function getRedirectTargetForLink( LinkTarget $linkTarget ): ?LinkTarget {

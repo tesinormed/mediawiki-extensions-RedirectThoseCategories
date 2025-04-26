@@ -15,11 +15,13 @@ use MediaWiki\Title\Title;
 use MediaWiki\User\User;
 
 class RecategorizePagesJob extends Job implements GenericParameterJob {
+	private const USERNAME = 'RedirectThoseCategories';
+
 	/** @inheritDoc */
 	public function __construct( array $params ) {
 		parent::__construct( 'recategorizePages', $params );
 		$this->removeDuplicates = true;
-		$this->title = Title::newFromDBkey( $this->params['categoryDBkey'] );
+		$this->title = Title::newFromID( $this->params['categoryId'] );
 	}
 
 	public function run(): bool {
@@ -60,15 +62,14 @@ class RecategorizePagesJob extends Job implements GenericParameterJob {
 
 			// try to save the new revision
 			try {
-				$categorizedWikiPage
-					->newPageUpdater( User::newSystemUser( wfMessage( 'redirectthosecategories-user' )->plain() ) )
+				$categorizedWikiPage->newPageUpdater( User::newSystemUser( self::USERNAME, [ 'steal' => true ] ) )
 					->setContent(
 						SlotRecord::MAIN,
 						ContentHandler::makeContent( $newContent, $categorizedWikiPage->getTitle() )
 					)
-					->saveRevision( CommentStoreComment::newUnsavedComment(
-						wfMessage( 'redirectthosecategories-edit-summary' )->plain()
-					) );
+					->saveRevision(
+						CommentStoreComment::newUnsavedComment( wfMessage( 'redirectthosecategories-edit-summary' ) )
+					);
 			} catch ( Exception ) {
 				return false;
 			}
