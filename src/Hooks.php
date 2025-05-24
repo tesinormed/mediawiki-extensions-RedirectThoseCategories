@@ -38,9 +38,9 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 		$categoryNsText = $language->getNsText( NS_CATEGORY );
 
 		$matchCount = preg_match_all(
-			'/\[\[ *((?:'
+			'/\[\[ *(?>'
 			. $categoryNsText . '|' . $language->lcfirst( $categoryNsText )
-			. '):) *(.+?)(?: *| *\| *(.*?) *)]]/m',
+			. '): *(.+?)(?: *| *\| *(.*?) *)]]/m',
 			$text,
 			$matches,
 			PREG_SET_ORDER
@@ -54,7 +54,7 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 			// $match[0] is the category link: [[Category:A category]]
 			// $match[1] is the category title text: Category:A category
 
-			$categoryPage = $this->pageLookup->getPageByText( $match[1] . $match[2] );
+			$categoryPage = $this->pageLookup->getPageByText( $categoryNsText . ':' . $match[1] );
 			// category page must be valid and must be protected
 			if ( $categoryPage === null || !$this->restrictionStore->isProtected( $categoryPage, 'edit' ) ) {
 				continue;
@@ -72,8 +72,8 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 
 			// replace original link with redirected link
 			$replacementText = '[[Category:' . $categoryPageRedirectTarget->getText();
-			if ( isset( $match[3] ) && trim( $match[3] ) !== '' ) {
-				$replacementText .= '|' . $match[3];
+			if ( isset( $match[2] ) && trim( $match[2] ) !== '' ) {
+				$replacementText .= '|' . $match[2];
 			}
 			$replacementText .= ']]';
 			$text = str_replace( $match[0], $replacementText, $text );
