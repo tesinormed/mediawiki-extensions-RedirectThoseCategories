@@ -4,7 +4,6 @@ namespace MediaWiki\Extension\RedirectThoseCategories;
 
 use JobQueueGroup;
 use MediaWiki\Hook\ParserPreSaveTransformCompleteHook;
-use MediaWiki\Language\Language;
 use MediaWiki\Linker\LinkTarget;
 use MediaWiki\Page\PageLookup;
 use MediaWiki\Page\RedirectLookup;
@@ -36,10 +35,12 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 	public function onParserPreSaveTransformComplete( $parser, &$text ): void {
 		// regex to match [[Category:A category]] (with non-English language support)
 		$language = $parser->getContentLanguage();
+		$categoryNsText = $language->getNsText( NS_CATEGORY );
+
 		$matchCount = preg_match_all(
-			'/\[\[ *('
-			. self::makeRegexCaseInsensitiveFirst( $language->getNsText( NS_CATEGORY ), $language )
-			. ': *.+?)(?: *| *\| *(.*?) *)]]/m',
+			'/\[\[ *((?:'
+			. $categoryNsText . '|' . $language->lcfirst( $categoryNsText )
+			. '):) *(.+?)(?: *| *\| *(.*?) *)]]/m',
 			$text,
 			$matches,
 			PREG_SET_ORDER
@@ -48,11 +49,12 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 			// error or no matches
 			return;
 		}
+
 		foreach ( $matches as $match ) {
 			// $match[0] is the category link: [[Category:A category]]
 			// $match[1] is the category title text: Category:A category
 
-			$categoryPage = $this->pageLookup->getPageByText( $match[1] );
+			$categoryPage = $this->pageLookup->getPageByText( $match[1] . $match[2] );
 			// category page must be valid and must be protected
 			if ( $categoryPage === null || !$this->restrictionStore->isProtected( $categoryPage, 'edit' ) ) {
 				continue;
@@ -70,8 +72,8 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 
 			// replace original link with redirected link
 			$replacementText = '[[Category:' . $categoryPageRedirectTarget->getText();
-			if ( isset( $match[2] ) && trim( $match[2] ) !== '' ) {
-				$replacementText .= '|' . $match[2];
+			if ( isset( $match[3] ) && trim( $match[3] ) !== '' ) {
+				$replacementText .= '|' . $match[3];
 			}
 			$replacementText .= ']]';
 			$text = str_replace( $match[0], $replacementText, $text );
@@ -104,9 +106,5 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 
 	private function getRedirectTargetForLink( LinkTarget $linkTarget ): ?LinkTarget {
 		return $this->redirectLookup->getRedirectTarget( $this->pageLookup->getPageForLink( $linkTarget ) );
-	}
-
-	private static function makeRegexCaseInsensitiveFirst( string $text, Language $language ): string {
-		return "(?:$text|{$language->lcfirst( $text )})";
 	}
 }

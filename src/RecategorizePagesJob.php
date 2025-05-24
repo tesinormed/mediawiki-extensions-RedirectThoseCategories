@@ -15,8 +15,6 @@ use MediaWiki\Title\Title;
 use MediaWiki\User\User;
 
 class RecategorizePagesJob extends Job implements GenericParameterJob {
-	private const USERNAME = 'RedirectThoseCategories';
-
 	/** @inheritDoc */
 	public function __construct( array $params ) {
 		parent::__construct( 'recategorizePages', $params );
@@ -46,10 +44,10 @@ class RecategorizePagesJob extends Job implements GenericParameterJob {
 			->caller( __METHOD__ )->fetchFieldValues();
 
 		foreach ( $result as $pageId ) {
-			$categorizedWikiPage = $wikiPageFactory->newFromID( $pageId );
-			$categorizedWikiPageContent = $categorizedWikiPage->getContent();
+			$wikiPage = $wikiPageFactory->newFromID( $pageId );
+			$wikiPageContent = $wikiPage->getContent();
 			// categorized page must be text
-			if ( !( $categorizedWikiPageContent instanceof TextContent ) ) {
+			if ( !( $wikiPageContent instanceof TextContent ) ) {
 				continue;
 			}
 
@@ -57,15 +55,15 @@ class RecategorizePagesJob extends Job implements GenericParameterJob {
 			$newContent = preg_replace(
 				$categoryRegex,
 				'[[Category:' . $this->title->getText() . '$1$2]]',
-				$categorizedWikiPageContent->getText()
+				$wikiPageContent->getText()
 			);
 
 			// try to save the new revision
 			try {
-				$categorizedWikiPage->newPageUpdater( User::newSystemUser( self::USERNAME, [ 'steal' => true ] ) )
+				$wikiPage->newPageUpdater( User::newSystemUser( 'RedirectThoseCategories', [ 'steal' => true ] ) )
 					->setContent(
 						SlotRecord::MAIN,
-						ContentHandler::makeContent( $newContent, $categorizedWikiPage->getTitle() )
+						ContentHandler::makeContent( $newContent, $wikiPage->getTitle() )
 					)
 					->saveRevision(
 						CommentStoreComment::newUnsavedComment( wfMessage( 'redirectthosecategories-edit-summary' ) )
