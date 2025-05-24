@@ -33,17 +33,11 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/ParserPreSaveTransformCompleteHook
 	 */
 	public function onParserPreSaveTransformComplete( $parser, &$text ): void {
-		// regex to match [[Category:A category]] (with non-English language support)
-		$language = $parser->getContentLanguage();
-		$categoryNsText = $language->getNsText( NS_CATEGORY );
-
+		// regex to match [[Category:A category|text]]
 		$matchCount = preg_match_all(
-			'/\[\[ *(?>'
-			. $categoryNsText . '|' . $language->lcfirst( $categoryNsText )
-			. '): *(.+?)(?: *| *\| *(.*?) *)]]/m',
-			$text,
-			$matches,
-			PREG_SET_ORDER
+			'/\[\[ *[Cc]ategory: *(.+?)(?: *| *\| *(.*?) *)]]/m',
+			$text, $matches,
+			flags: PREG_SET_ORDER
 		);
 		if ( $matchCount === false || $matchCount === 0 ) {
 			// error or no matches
@@ -54,25 +48,25 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 			// $match[0] is the category link: [[Category:A category]]
 			// $match[1] is the category title text: Category:A category
 
-			$categoryPage = $this->pageLookup->getPageByText( $categoryNsText . ':' . $match[1] );
+			$categoryPage = $this->pageLookup->getPageByText( 'Category:' . $match[1] );
 			// category page must be valid and must be protected
 			if ( $categoryPage === null || !$this->restrictionStore->isProtected( $categoryPage, 'edit' ) ) {
 				continue;
 			}
 
-			$categoryPageRedirectTarget = $this->redirectLookup->getRedirectTarget( $categoryPage );
+			$redirectTarget = $this->redirectLookup->getRedirectTarget( $categoryPage );
 			// category page must redirect to another category page
-			if ( $categoryPageRedirectTarget === null || $categoryPageRedirectTarget->getNamespace() !== NS_CATEGORY ) {
+			if ( $redirectTarget === null || $redirectTarget->getNamespace() !== NS_CATEGORY ) {
 				continue;
 			}
-			if ( $this->getRedirectTargetForLink( $categoryPageRedirectTarget ) !== null ) {
+			if ( $this->getRedirectTargetForLink( $redirectTarget ) !== null ) {
 				wfLogWarning( __METHOD__ . ": category {$categoryPage->getDBkey()} is a double redirect" );
 				continue;
 			}
 
 			// replace original link with redirected link
-			$replacementText = '[[Category:' . $categoryPageRedirectTarget->getText();
-			if ( isset( $match[2] ) && trim( $match[2] ) !== '' ) {
+			$replacementText = '[[Category:' . $redirectTarget->getText();
+			if ( isset( $match[2] ) ) {
 				$replacementText .= '|' . $match[2];
 			}
 			$replacementText .= ']]';

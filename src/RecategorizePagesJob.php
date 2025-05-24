@@ -27,11 +27,9 @@ class RecategorizePagesJob extends Job implements GenericParameterJob {
 		$dbProvider = $services->getConnectionProvider();
 		$wikiPageFactory = $services->getWikiPageFactory();
 
-		// regex to match [[Category:A category]] (with non-English language support)
+		// regex to match [[Category:A category]]
 		$language = $this->title->getPageLanguage();
-		$categoryRegex = '/\[\[ *'
-			. self::makeRegexCaseInsensitiveFirst( $language->getNsText( NS_CATEGORY ), $language )
-			. ': *'
+		$categoryRegex = '/\[\[ *[Cc]ategory: *'
 			. str_replace( '_', '[_ ]', self::makeRegexCaseInsensitiveFirst( $this->title->getDBkey(), $language ) )
 			. '(?: *| *(\|) *(.*?) *)]]/m';
 
