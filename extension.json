@@ -1,6 +1,6 @@
 {
 	"name": "RedirectThoseCategories",
-	"version": "0.2.6",
+	"version": "0.3.0",
 	"author": [
 		"tesinormed"
 	],
@@ -21,7 +21,6 @@
 		"main": {
 			"class": "MediaWiki\\Extension\\RedirectThoseCategories\\Hooks",
 			"services": [
-				"JobQueueGroup",
 				"PageStore",
 				"RedirectStore",
 				"RestrictionStore"
@@ -29,11 +28,7 @@
 		}
 	},
 	"Hooks": {
-		"ParserPreSaveTransformComplete": "main",
-		"PageSaveComplete": "main"
-	},
-	"JobClasses": {
-		"recategorizePages": "MediaWiki\\Extension\\RedirectThoseCategories\\RecategorizePagesJob"
+		"ParserPreSaveTransformComplete": "main"
 	},
 	"MessagesDirs": {
 		"RedirectThoseCategories": [

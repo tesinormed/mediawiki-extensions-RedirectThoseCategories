@@ -2,27 +2,24 @@
 
 namespace MediaWiki\Extension\RedirectThoseCategories;
 
-use JobQueueGroup;
+use Exception;
 use MediaWiki\Hook\ParserPreSaveTransformCompleteHook;
 use MediaWiki\Linker\LinkTarget;
 use MediaWiki\Page\PageLookup;
 use MediaWiki\Page\RedirectLookup;
 use MediaWiki\Permissions\RestrictionStore;
-use MediaWiki\Storage\Hook\PageSaveCompleteHook;
+use MediaWiki\Title\Title;
 
-class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook {
-	private JobQueueGroup $jobQueueGroup;
+class Hooks implements ParserPreSaveTransformCompleteHook {
 	private PageLookup $pageLookup;
 	private RedirectLookup $redirectLookup;
 	private RestrictionStore $restrictionStore;
 
 	public function __construct(
-		JobQueueGroup $jobQueueGroup,
 		PageLookup $pageLookup,
 		RedirectLookup $redirectLookup,
 		RestrictionStore $restrictionStore,
 	) {
-		$this->jobQueueGroup = $jobQueueGroup;
 		$this->pageLookup = $pageLookup;
 		$this->redirectLookup = $redirectLookup;
 		$this->restrictionStore = $restrictionStore;
@@ -35,7 +32,7 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 	public function onParserPreSaveTransformComplete( $parser, &$text ): void {
 		// regex to match [[Category:A category|text]]
 		$matchCount = preg_match_all(
-			'/\[\[ *[Cc]ategory: *(.+?)(?: *| *\| *(.*?) *)]]/m',
+			'/\[\[ *([Cc]ategory: *.+?)(?: *| *\| *(.*?) *)]]/m',
 			$text, $matches,
 			flags: PREG_SET_ORDER
 		);
@@ -48,7 +45,7 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 			// $match[0] is the category link: [[Category:A category]]
 			// $match[1] is the category title text: Category:A category
 
-			$categoryPage = $this->pageLookup->getPageByText( 'Category:' . $match[1] );
+			$categoryPage = $this->pageLookup->getPageByText( $match[1] );
 			// category page must be valid and must be protected
 			if ( $categoryPage === null || !$this->restrictionStore->isProtected( $categoryPage, 'edit' ) ) {
 				continue;
@@ -65,7 +62,7 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 			}
 
 			// replace original link with redirected link
-			$replacementText = '[[Category:' . $redirectTarget->getText();
+			$replacementText = '[[' . Title::newFromLinkTarget( $redirectTarget )->getPrefixedText();
 			if ( isset( $match[2] ) ) {
 				$replacementText .= '|' . $match[2];
 			}
@@ -74,31 +71,11 @@ class Hooks implements ParserPreSaveTransformCompleteHook, PageSaveCompleteHook 
 		}
 	}
 
-	/**
-	 * @inheritDoc
-	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/PageSaveComplete
-	 */
-	public function onPageSaveComplete( $wikiPage, $user, $summary, $flags, $revisionRecord, $editResult ): void {
-		// page must be a category and must be protected
-		if ( $wikiPage->getNamespace() !== NS_CATEGORY || !$this->restrictionStore->isProtected( $wikiPage, 'edit' ) ) {
-			return;
-		}
-
-		// category page must redirect to another category page
-		$redirectTarget = $this->redirectLookup->getRedirectTarget( $wikiPage );
-		if ( $redirectTarget === null || $redirectTarget->getNamespace() !== NS_CATEGORY ) {
-			return;
-		}
-		if ( $this->getRedirectTargetForLink( $redirectTarget ) !== null ) {
-			wfLogWarning( __METHOD__ . ": category {$wikiPage->getDBkey()} is a double redirect" );
-			return;
-		}
-
-		// push to job queue (expensive operation)
-		$this->jobQueueGroup->lazyPush( new RecategorizePagesJob( [ 'categoryId' => $wikiPage->getId() ] ) );
-	}
-
 	private function getRedirectTargetForLink( LinkTarget $linkTarget ): ?LinkTarget {
-		return $this->redirectLookup->getRedirectTarget( $this->pageLookup->getPageForLink( $linkTarget ) );
+		try {
+			return $this->redirectLookup->getRedirectTarget( $this->pageLookup->getPageForLink( $linkTarget ) );
+		} catch ( Exception ) {
+			return null;
+		}
 	}
 }
